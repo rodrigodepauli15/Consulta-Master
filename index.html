@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Consulta de Número de Série</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; position: relative; }
+
+    #logo {
+      width: 200px;
+      margin-bottom: 20px;
+      display: inline-block;
+    }
+
+    #nomeUsuario {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    input[type="text"] {
+      padding: 8px;
+      margin-bottom: 10px;
+      width: 300px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+      display: none;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #003366;
+      color: white;
+    }
+
+    td:first-child, th:first-child {
+      width: 150px;
+    }
+
+    #clearFilter {
+      padding: 10px;
+      margin-top: 20px;
+      cursor: pointer;
+      background-color: #f44336;
+      color: white;
+      display: none;
+    }
+
+    #loadMore {
+      padding: 10px;
+      margin-top: 20px;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      display: none;
+    }
+
+    .no-results {
+      color: red;
+      font-weight: bold;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <img src="logo.png" alt="Logo" id="logo">
+  <div id="nomeUsuario">Rodrigo de Pauli</div>
+
+  <h2>Consulta de Número de Série</h2>
+
+  <input type="text" id="filtro" placeholder="Digite o Número de Série para pesquisar...">
+  <button id="clearFilter">Limpar Filtro</button>
+
+  <table id="tabelaExcel"></table>
+  <p id="noResults" class="no-results">Nenhum resultado encontrado.</p>
+  <button id="loadMore">Carregar mais dados</button>
+
+  <script>
+    let dadosPlanilha = [];
+    let dadosFiltrados = [];
+    let dadosVisiveis = [];
+    const linhasPorCarregar = 50;
+
+    const tabela = document.getElementById('tabelaExcel');
+    const noResults = document.getElementById('noResults');
+    const loadMoreButton = document.getElementById('loadMore');
+    const filtroInput = document.getElementById('filtro');
+
+    const URL_PLANILHA = "https://github.com/rodrigodepauli15/Consulta-Master/raw/refs/heads/main/Planilha%20Consulta%20Master.xlsx"; // <-- Altere aqui
+
+    // Carrega a planilha do GitHub
+    fetch(URL_PLANILHA)
+      .then(res => res.arrayBuffer())
+      .then(data => {
+        const workbook = XLSX.read(data, { type: 'array' });
+        const primeiraAba = workbook.SheetNames[0];
+        const planilha = workbook.Sheets[primeiraAba];
+        dadosPlanilha = XLSX.utils.sheet_to_json(planilha, { header: 1 });
+
+        console.log("Planilha carregada com sucesso.");
+      })
+      .catch(err => {
+        console.error("Erro ao carregar a planilha:", err);
+        alert("Erro ao carregar a planilha fixa.");
+      });
+
+    filtroInput.addEventListener('input', () => {
+      const termo = filtroInput.value.trim().toLowerCase();
+
+      if (termo === '') {
+        tabela.style.display = 'none';
+        noResults.style.display = 'none';
+        document.getElementById('clearFilter').style.display = 'none';
+        loadMoreButton.style.display = 'none';
+        return;
+      }
+
+      dadosFiltrados = [dadosPlanilha[0], ...dadosPlanilha.slice(1).filter(linha =>
+        linha.some(cel => (cel + '').toLowerCase().includes(termo))
+      )];
+
+      dadosVisiveis = dadosFiltrados.slice(0, linhasPorCarregar);
+      exibirTabela(dadosVisiveis);
+
+      tabela.style.display = 'block';
+      noResults.style.display = dadosFiltrados.length <= 1 ? 'block' : 'none';
+      document.getElementById('clearFilter').style.display = 'block';
+      loadMoreButton.style.display = dadosFiltrados.length > linhasPorCarregar ? 'block' : 'none';
+    });
+
+    loadMoreButton.addEventListener('click', () => {
+      const totalLinhas = dadosVisiveis.length + linhasPorCarregar;
+      dadosVisiveis = dadosFiltrados.slice(0, totalLinhas);
+      exibirTabela(dadosVisiveis);
+      loadMoreButton.style.display = totalLinhas < dadosFiltrados.length ? 'block' : 'none';
+    });
+
+    document.getElementById('clearFilter').addEventListener('click', () => {
+      filtroInput.value = '';
+      tabela.style.display = 'none';
+      noResults.style.display = 'none';
+      document.getElementById('clearFilter').style.display = 'none';
+      loadMoreButton.style.display = 'none';
+    });
+
+    function exibirTabela(dados) {
+      tabela.innerHTML = '';
+
+      if (dados.length === 0) {
+        noResults.style.display = 'block';
+        return;
+      }
+
+      dados.forEach((linha, i) => {
+        const tr = document.createElement('tr');
+        linha.forEach(cel => {
+          const td = document.createElement(i === 0 ? 'th' : 'td');
+          td.textContent = cel;
+          tr.appendChild(td);
+        });
+        tabela.appendChild(tr);
+      });
+    }
+  </script>
+
+</body>
+</html>
+
+
